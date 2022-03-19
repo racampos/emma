@@ -82,17 +82,51 @@ describe("Emma", () => {
         });
     });
     describe('Adding products to the inventory', () => {
-        it('should increase the amount of milk tokens in the inventory', async () => {
-            await emma.connect(manufacturer).addProductToInventory('MILK', 100);
-            const productId = await emma.getProductBySku('MILK');
-            const balance = await productTokens.balanceOf(emma.address, productId);
-            assert.equal(balance.toString(), "100");
+        let shipmentId;
+        before(async () => {
+            await emma.connect(manufacturer).addProductToInventory('MILK', 100, warehouse.getAddress());
+            const manuf = await emma.getManufacturer(manufacturer.getAddress());
+            shipmentId = manuf.pendingShipments[0];
         });
-        it("should increase the amount of milk receipt tokens in the manufacturer's wallet", async () => {
-            const productId = await emma.getProductBySku('MILK');
-            const balance = await productReceiptTokens.balanceOf(manufacturer.getAddress(), productId);
-            assert.equal(balance.toString(), "100");
+        describe('After adding a product to the inventory', () => {
+            it('should increase the amount of milk tokens in the inventory', async () => {
+                const productId = await emma.getProductBySku('MILK');
+                const balance = await productTokens.balanceOf(emma.address, productId);
+                assert.equal(balance.toString(), "100");
+            });
+            it('should create a shipment from the manufacturer to the warehouse', async () => {
+                const shipments = await emma.getShipment(shipmentId);
+                assert.equal(shipments.from, await manufacturer.getAddress());
+                assert.equal(shipments.to, await warehouse.getAddress());
+            });
+            it('should prevent the manufacturer from claiming their product receipt tokens before the warehouse confirms the shipment has been received', async () => {
+                let ex;
+                try {
+                    await emma.connect(manufacturer).claimProductReceiptTokens(shipmentId);
+                }
+                catch (_ex) {
+                    ex = _ex;
+                }
+                assert(ex, "Shipment receipt hasn't been confirmed by the warehouse. Expected transaction to revert!");
+            });
         });
+        
+    });
+    describe('Claiming product receipt tokens after a shipment has been confirmed by the warehouse', () => {
+        before(async () => {
+            const wh = await emma.getWarehouse(warehouse.getAddress());
+            shipmentId = wh.pendingShipments[0];
+            await emma.connect(warehouse).confirmProductReceiptbyWarehouse(shipmentId);
+        });
+        describe('After the warehouse confirms the receipt of the product', () => {
+            it("should allow the manufacturer to claim their product receipt tokens", async () => {
+                await emma.connect(manufacturer).claimProductReceiptTokens(shipmentId);
+                const productId = await emma.getProductBySku('MILK');
+                const balance = await productReceiptTokens.balanceOf(manufacturer.getAddress(), productId);
+                assert.equal(balance.toString(), "100");
+            });
+        });
+        
     });
     describe('Purchasing products directly from Emma', () => {
         before(async () => {
@@ -193,8 +227,6 @@ describe("Emma", () => {
                 assert.equal(claimableTokenAmount.toString(), "0");
             });
         });
-        
-
     });
     
 });

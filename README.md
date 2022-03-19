@@ -1,15 +1,7 @@
-# Basic Sample Hardhat Project
+# Emma: A decentralized marketplace for tokenized products and services
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, a sample script that deploys that contract, and an example of a task implementation, which simply lists the available accounts.
+## To Do
 
-Try running some of the following tasks:
-
-```shell
-npx hardhat accounts
-npx hardhat compile
-npx hardhat clean
-npx hardhat test
-npx hardhat node
-node scripts/sample-script.js
-npx hardhat help
-```
+1. Batch addition of products to inventory, by taking advantage of EIP-1155's batch operations.
+2. Include the shipment service provider as one of the market participants. Currently it is assumed that payment for the shipping services is made off-chain by the sender of the goods, using traditional payment methods.
+3. 

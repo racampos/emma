@@ -23,7 +23,8 @@ contract Emma is Ownable, ERC1155Receiver {
     mapping(uint256 => uint256) public claimableTokens;
     uint256 latestProductId = 1;
     uint256 constant NULL_PRODUCT = 0;
-    uint256 protocolFeePercentage = 10; // 10% percent
+    uint256 protocolFeePercentage = 10;
+    EmmaStructs.Shipment[] public shipments;
 
     constructor(address _productTokensContract, address _productReceiptTokensContract, address _usdcTokensContract) {
         productTokensContract = _productTokensContract;
@@ -42,8 +43,10 @@ contract Emma is Ownable, ERC1155Receiver {
         return manufacturers[addr].exists;
     }
 
-    function registerWarehouse(string calldata name, string calldata _physicalAddress) public {
-        warehouses[_msgSender()] = EmmaStructs.Warehouse(name, _physicalAddress, true);
+    function registerWarehouse(string calldata _name, string calldata _physicalAddress) public {
+        warehouses[_msgSender()].exists = true;
+        warehouses[_msgSender()].name = _name;
+        warehouses[_msgSender()].physicalAddress = _physicalAddress;
     }
 
     function isWarehouse(address addr) public view returns (bool) {
@@ -111,14 +114,36 @@ contract Emma is Ownable, ERC1155Receiver {
         return filteredProductIds;
     }
 
-    function addProductToInventory(string calldata _sku, uint256 amount) public {
+    function registerBatchShipment(address _from, address _to, uint256[] memory _productIds, uint256[] memory _amounts) public returns (uint256) {
+        EmmaStructs.Shipment memory shipment = EmmaStructs.Shipment({
+            from: _from,
+            to: _to,
+            productIds: _productIds,
+            amounts: _amounts,
+            received: false
+        });
+        shipments.push(shipment);
+        return shipments.length - 1;
+    }
+
+    function registerSingleShipment(address _from, address _to, uint256 _productId, uint256 _amount) public returns (uint256) {
+        uint256[] memory productIds = new uint256[](1);
+        uint256[] memory amounts = new uint256[](1);
+        productIds[0] = _productId;
+        amounts[0] = _amount;
+        return registerBatchShipment(_from, _to, productIds, amounts);
+    }
+
+    function addProductToInventory(string calldata _sku, uint256 amount, address _warehouse) public {
         uint256 productId = getProductBySku(_sku);
         require(productId != NULL_PRODUCT, 'Product not in catalog');
         EmmaStructs.Product memory product = getProductById(productId);
         require(product.manufacturer == _msgSender(), 'Only the manufacturer can add product to the inventory');
         productTokens.mintProduct(productId, amount);
         productReceiptTokens.mintProduct(productId, amount);
-        productReceiptTokens.transfer(_msgSender(), productId, amount);
+        uint256 shipmentId = registerSingleShipment(_msgSender(), _warehouse, productId, amount);
+        warehouses[_warehouse].pendingShipments.push(shipmentId);
+        manufacturers[_msgSender()].pendingShipments.push(shipmentId);
     }
 
     function purchaseProduct(string calldata sku, uint256 price, uint256 amount) public {
@@ -140,4 +165,35 @@ contract Emma is Ownable, ERC1155Receiver {
         claimableTokens[productId] = 0;
     }
 
+    function confirmShipmentReceipt(address receiver, uint256 shipmentId) internal {
+        require(shipments[shipmentId].to == receiver, "Only the receiver can confirm a shipment.");
+        shipments[shipmentId].received = true;
+    }
+
+    function confirmProductReceiptbyWarehouse(uint256 shipmentId) public {
+        require(isWarehouse(_msgSender()), "Only a warehouse can confirm a product shipment");
+        confirmShipmentReceipt(_msgSender(), shipmentId);
+    }
+
+    function claimProductReceiptTokens(uint256 shipmentId) public {
+        EmmaStructs.Shipment memory shipment = shipments[shipmentId];
+        require(_msgSender() == shipment.from, "Only the manufacturer that sent the product can claim the receipt tokens");
+        require(shipment.received);
+        for (uint i=0; i<shipment.productIds.length; i++) {
+            productReceiptTokens.transfer(_msgSender(), shipment.productIds[i], shipment.amounts[i]);
+        }
+    }
+
+    function getShipment(uint256 shipmentId) public view returns (EmmaStructs.Shipment memory) {
+        return shipments[shipmentId];
+    }
+
+    function getManufacturer(address addr) public view returns (EmmaStructs.Manufacturer memory) {
+        return manufacturers[addr];
+    }
+
+    function getWarehouse(address addr) public view returns (EmmaStructs.Warehouse memory) {
+        return warehouses[addr];
+    }
+        
 }

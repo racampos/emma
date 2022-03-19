@@ -14,17 +14,27 @@ library EmmaStructs {
     struct Manufacturer {
         uint256 balance;
         bool exists;
+        uint256[] pendingShipments;
     }
 
     struct Warehouse {
         string name;
         string physicalAddress;
+        uint256[] pendingShipments;
         bool exists;
     }
 
     struct Store {
         uint256 balance;
         bool exists;
+    }
+
+    struct Shipment {
+        address from;
+        address to;
+        uint256[] productIds;
+        uint256[] amounts;
+        bool received;
     }
 }
 
