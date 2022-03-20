@@ -217,7 +217,7 @@ describe("Emma", () => {
                 const usdcBalance = await usdc.balanceOf(manufacturer.getAddress());
                 assert.equal(usdcBalance.toString(), "18");
             });
-            it("should exist 2 USDC in the Emma contract (the 10% protocol fee)", async () => {
+            it("should exist 2 USDC in the Emma contract (the 5% protocol fee + the 5% unclaimed storage fee)", async () => {
                 const usdcBalance = await usdc.balanceOf(emma.address);
                 assert.equal(usdcBalance.toString(), "2");
             });
@@ -225,6 +225,30 @@ describe("Emma", () => {
                 const productId = await emma.getProductBySku('MILK');
                 const claimableTokenAmount = await emma.claimableTokens(productId);
                 assert.equal(claimableTokenAmount.toString(), "0");
+            });
+        });
+    });
+    describe('Exchange product tokens for physical products', () => {
+        before(async () => {
+            await productTokens.connect(customer).setApprovalForAll(emma.address, true);
+            await emma.connect(customer).exchangeTokensForProduct(warehouse.getAddress());
+        });
+        describe('After the customer exchanges their product tokens', () => {
+            it("should exist 0 milk tokens in the customer's wallet", async () => {
+                const productId = await emma.getProductBySku('MILK');
+                const milkBalance = await productTokens.balanceOf(customer.getAddress(), productId);
+                assert.equal(milkBalance.toString(), "0");
+            });
+            it("should exist 1 USDC in claimable storage fees for the warehouse", async () => {
+                const wh = await emma.getWarehouse(warehouse.getAddress());
+                assert.equal(wh.claimableFees.toString(), "1");
+            });
+        });
+        describe('After the warehouse claims their storage fees', () => {
+            it("should exist 1 USDC in the warehouse's wallet", async () => {
+                await emma.connect(warehouse).claimStorageFee();
+                const usdcBalance = await usdc.balanceOf(warehouse.getAddress());
+                assert.equal(usdcBalance.toString(), "1");
             });
         });
     });

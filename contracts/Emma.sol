@@ -23,7 +23,8 @@ contract Emma is Ownable, ERC1155Receiver {
     mapping(uint256 => uint256) public claimableTokens;
     uint256 latestProductId = 1;
     uint256 constant NULL_PRODUCT = 0;
-    uint256 protocolFeePercentage = 10;
+    uint256 protocolFeePercentage = 5;
+    uint256 warehouseFeePercentage = 5;
     EmmaStructs.Shipment[] public shipments;
 
     constructor(address _productTokensContract, address _productReceiptTokensContract, address _usdcTokensContract) {
@@ -61,8 +62,8 @@ contract Emma is Ownable, ERC1155Receiver {
     //     return stores[addr].exists;
     // }
 
-    function _calculateProtocolFee(uint256 amount) internal view returns (uint256) {
-        return amount * protocolFeePercentage / 100;
+    function _calculateFee(uint256 feePercentage, uint256 amount) internal pure returns (uint256) {
+        return amount * feePercentage / 100;
     }
 
     function addProductToCatalog(
@@ -160,7 +161,8 @@ contract Emma is Ownable, ERC1155Receiver {
         require(productReceiptTokens.balanceOf(_msgSender(), productId) > claimableTokens[productId], "Nothing to claim");
         EmmaStructs.Product memory product = getProductById(productId);
         uint256 salesProfit = product.manufacturerPrice * claimableTokens[productId];
-        usdc.transfer(_msgSender(), salesProfit - _calculateProtocolFee(salesProfit));
+        uint256 fees = _calculateFee(protocolFeePercentage, salesProfit) + _calculateFee(warehouseFeePercentage, salesProfit);
+        usdc.transfer(_msgSender(), salesProfit - fees);
         productReceiptTokens.burn(_msgSender(), productId, claimableTokens[productId]);
         claimableTokens[productId] = 0;
     }
@@ -182,6 +184,33 @@ contract Emma is Ownable, ERC1155Receiver {
         for (uint i=0; i<shipment.productIds.length; i++) {
             productReceiptTokens.transfer(_msgSender(), shipment.productIds[i], shipment.amounts[i]);
         }
+    }
+
+    function claimStorageFee() public {
+        require(isWarehouse(_msgSender()), 'Only warehouses can claim storage fees.');
+        uint256 feesToClaim = warehouses[_msgSender()].claimableFees;
+        require(feesToClaim > 0, 'Nothing to claim.');
+        usdc.transfer(_msgSender(), feesToClaim);
+    }
+
+    function exchangeTokensForProduct(address _warehouse) public {
+        bool hasProductTokens;
+        for (uint i=1; i<=latestProductId; i++) {
+            if (productTokens.balanceOf(_msgSender(), i) > 0) {
+                hasProductTokens = true;
+            }
+        }
+        require(hasProductTokens, 'No product tokens in wallet to exchange for');
+        uint256 warehouseFee;
+        for (uint productId=1; productId<=latestProductId; productId++) {
+            uint256 tokenBalance = productTokens.balanceOf(_msgSender(), productId);
+            if (tokenBalance > 0) {
+                EmmaStructs.Product memory product = getProductById(productId);
+                warehouseFee += _calculateFee(warehouseFeePercentage, product.manufacturerPrice * tokenBalance);
+                productTokens.burn(_msgSender(), productId, tokenBalance);
+            }
+        }
+        warehouses[_warehouse].claimableFees = warehouseFee;        
     }
 
     function getShipment(uint256 shipmentId) public view returns (EmmaStructs.Shipment memory) {

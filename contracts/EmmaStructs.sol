@@ -21,6 +21,7 @@ library EmmaStructs {
         string name;
         string physicalAddress;
         uint256[] pendingShipments;
+        uint256 claimableFees;
         bool exists;
     }
 
