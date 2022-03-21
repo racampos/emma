@@ -89,7 +89,7 @@ This is the state of the system at the end of the Product Purchase Workflow:
 
 ![Profit Claiming Workflow 1](/docs/pcw1.png)
 
-This is the state of the system at the end of the Product Supply Workflow:
+This is the state of the system at the end of the Profit Claming Workflow:
 
 ![Profit Claiming Workflow Final State](/docs/pcw_fs.png)
 
@@ -113,7 +113,7 @@ This is the state of the system at the end of the Product Supply Workflow:
 
 ![Product Exchange Workflow 2](/docs/pew2.png)
 
-This is the state of the system at the end of the Product Supply Workflow:
+This is the state of the system at the end of the Product Exchange Workflow:
 
 ![Product Exchange Workflow Final State](/docs/pew_fs.png)
 
