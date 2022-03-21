@@ -64,7 +64,7 @@ This is the state of the system at the end of the Product Supply Workflow:
 The following actions all take place in an atomic transaction:
 * The customer sends money to the Store contract, requesting the purchase of some product.
 * The store forwards the request to the Emma contract, keeping its cut of the money.
-* The Emma contract sends the Product Tokens to the Store contract, keeping the funds.
+* The Emma contract sends the Product Tokens to the Store contract, while keeps the funds.
 * The Store contract sends the Product Tokens to the customer.
 
 ![Product Purchase Workflow 1](/docs/ppw1.png)
@@ -119,6 +119,8 @@ This is the state of the system at the end of the Product Exchange Workflow:
 
 
 ## To Do
+
+Following are some improvement opportunities for the project:
 
 1. Batch addition of products to the inventory, by taking advantage of EIP-1155's batch operations.
 2. Include the shipment service provider as one of the market participants. Currently it is assumed that payment for the shipping services is made off-chain by the sender of the goods, using traditional payment methods.
