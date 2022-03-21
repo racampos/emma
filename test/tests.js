@@ -41,7 +41,7 @@ describe("Emma", () => {
     describe('Adding and retrieving products to/from the catalog', () => {
         it('should add a new product to the catalog', async () => {
             const sku = 'MILK';
-            const name = 'Carton of milk';
+            const name = 'Gallon of milk';
             const manufacturerPrice = 2;
             await emma.connect(manufacturer).addProductToCatalog(manufacturerPrice, name, sku);
             const productId = await emma.getProductBySku(sku);
